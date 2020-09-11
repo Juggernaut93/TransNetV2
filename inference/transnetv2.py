@@ -66,7 +66,7 @@ class TransNetV2:
 
         return single_frame_pred[:len(frames)], all_frames_pred[:len(frames)]  # remove extra padded frames
 
-    def predict_video(self, video_fn: str):
+    def predict_video(self, video_fn: str, nodup=True):
         try:
             import ffmpeg
         except ModuleNotFoundError:
@@ -75,8 +75,11 @@ class TransNetV2:
                                       "install python wrapper by `pip install ffmpeg-python`.")
 
         print("[TransNetV2] Extracting frames from {}".format(video_fn))
+        # passthrough tells ffmpeg not to duplicate any frame (it does that to obtain constant frame rate)
+        # using nodup is useful for example if you want the output to have the same frames as OpenCV, which seems to use passthrough vsync
+        vsync_method = "passthrough" if nodup else "auto"
         video_stream, err = ffmpeg.input(video_fn).output(
-            "pipe:", format="rawvideo", pix_fmt="rgb24", s="48x27"
+            "pipe:", format="rawvideo", pix_fmt="rgb24", s="48x27", vsync=vsync_method
         ).run(capture_stdout=True, capture_stderr=True)
 
         video = np.frombuffer(video_stream, np.uint8).reshape([-1, 27, 48, 3])
